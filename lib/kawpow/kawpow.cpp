@@ -1,22 +1,22 @@
-// ethash: C/C++ implementation of Ethash, the Ethereum Proof of Work algorithm.
+// kawpow: C/C++ implementation of Kawpow, the Ravencoin Proof of Work algorithm.
 // Copyright 2018-2019 Pawel Bylica.
 // Licensed under the Apache License, Version 2.0.
 
-#include "ethash-internal.hpp"
+#include "kawpow-internal.hpp"
 
 #include "../support/attributes.h"
 #include "bit_manipulation.h"
 #include "endianness.hpp"
 #include "primes.h"
-#include <ethash/keccak.hpp>
-#include <ethash/progpow.hpp>
+#include <kawpow/keccak.hpp>
+#include <kawpow/progpow.hpp>
 
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <limits>
 
-namespace ethash
+namespace kawpow
 {
 // Internal constants:
 constexpr static int light_cache_init_size = 1 << 24;
@@ -27,10 +27,10 @@ constexpr static int full_dataset_growth = 1 << 23;
 constexpr static int full_dataset_item_parents = 512;
 
 // Verify constants:
-static_assert(sizeof(hash512) == ETHASH_LIGHT_CACHE_ITEM_SIZE, "");
-static_assert(sizeof(hash1024) == ETHASH_FULL_DATASET_ITEM_SIZE, "");
-static_assert(light_cache_item_size == ETHASH_LIGHT_CACHE_ITEM_SIZE, "");
-static_assert(full_dataset_item_size == ETHASH_FULL_DATASET_ITEM_SIZE, "");
+static_assert(sizeof(hash512) == KAWPOW_LIGHT_CACHE_ITEM_SIZE, "");
+static_assert(sizeof(hash1024) == KAWPOW_FULL_DATASET_ITEM_SIZE, "");
+static_assert(light_cache_item_size == KAWPOW_LIGHT_CACHE_ITEM_SIZE, "");
+static_assert(full_dataset_item_size == KAWPOW_FULL_DATASET_ITEM_SIZE, "");
 
 
 namespace
@@ -348,21 +348,21 @@ search_result search(const epoch_context_full& context, const hash256& header_ha
     }
     return {};
 }
-}  // namespace ethash
+}  // namespace kawpow
 
-using namespace ethash;
+using namespace kawpow;
 
 extern "C" {
 
-ethash_hash256 ethash_calculate_epoch_seed(int epoch_number) noexcept
+kawpow_hash256 kawpow_calculate_epoch_seed(int epoch_number) noexcept
 {
-    ethash_hash256 epoch_seed = {};
+    kawpow_hash256 epoch_seed = {};
     for (int i = 0; i < epoch_number; ++i)
-        epoch_seed = ethash_keccak256_32(epoch_seed.bytes);
+        epoch_seed = kawpow_keccak256_32(epoch_seed.bytes);
     return epoch_seed;
 }
 
-int ethash_calculate_light_cache_num_items(int epoch_number) noexcept
+int kawpow_calculate_light_cache_num_items(int epoch_number) noexcept
 {
     static constexpr int item_size = sizeof(hash512);
     static constexpr int num_items_init = light_cache_init_size / item_size;
@@ -373,11 +373,11 @@ int ethash_calculate_light_cache_num_items(int epoch_number) noexcept
         light_cache_growth % item_size == 0, "light_cache_growth not multiple of item size");
 
     int num_items_upper_bound = num_items_init + epoch_number * num_items_growth;
-    int num_items = ethash_find_largest_prime(num_items_upper_bound);
+    int num_items = kawpow_find_largest_prime(num_items_upper_bound);
     return num_items;
 }
 
-int ethash_calculate_full_dataset_num_items(int epoch_number) noexcept
+int kawpow_calculate_full_dataset_num_items(int epoch_number) noexcept
 {
     static constexpr int item_size = sizeof(hash1024);
     static constexpr int num_items_init = full_dataset_init_size / item_size;
@@ -388,32 +388,32 @@ int ethash_calculate_full_dataset_num_items(int epoch_number) noexcept
         full_dataset_growth % item_size == 0, "full_dataset_growth not multiple of item size");
 
     int num_items_upper_bound = num_items_init + epoch_number * num_items_growth;
-    int num_items = ethash_find_largest_prime(num_items_upper_bound);
+    int num_items = kawpow_find_largest_prime(num_items_upper_bound);
     return num_items;
 }
 
-epoch_context* ethash_create_epoch_context(int epoch_number) noexcept
+epoch_context* kawpow_create_epoch_context(int epoch_number) noexcept
 {
     return generic::create_epoch_context(build_light_cache, epoch_number, false);
 }
 
-epoch_context_full* ethash_create_epoch_context_full(int epoch_number) noexcept
+epoch_context_full* kawpow_create_epoch_context_full(int epoch_number) noexcept
 {
     return generic::create_epoch_context(build_light_cache, epoch_number, true);
 }
 
-void ethash_destroy_epoch_context_full(epoch_context_full* context) noexcept
+void kawpow_destroy_epoch_context_full(epoch_context_full* context) noexcept
 {
-    ethash_destroy_epoch_context(context);
+    kawpow_destroy_epoch_context(context);
 }
 
-void ethash_destroy_epoch_context(epoch_context* context) noexcept
+void kawpow_destroy_epoch_context(epoch_context* context) noexcept
 {
     context->~epoch_context();
     std::free(context);
 }
 
-ethash_result ethash_hash(
+kawpow_result kawpow_hash(
     const epoch_context* context, const hash256* header_hash, uint64_t nonce) noexcept
 {
     const hash512 seed = hash_seed(*header_hash, nonce);
@@ -421,14 +421,14 @@ ethash_result ethash_hash(
     return {hash_final(seed, mix_hash), mix_hash};
 }
 
-bool ethash_verify_final_hash(const hash256* header_hash, const hash256* mix_hash, uint64_t nonce,
+bool kawpow_verify_final_hash(const hash256* header_hash, const hash256* mix_hash, uint64_t nonce,
     const hash256* boundary) noexcept
 {
     const hash512 seed = hash_seed(*header_hash, nonce);
     return is_less_or_equal(hash_final(seed, *mix_hash), *boundary);
 }
 
-bool ethash_verify(const epoch_context* context, const hash256* header_hash,
+bool kawpow_verify(const epoch_context* context, const hash256* header_hash,
     const hash256* mix_hash, uint64_t nonce, const hash256* boundary) noexcept
 {
     const hash512 seed = hash_seed(*header_hash, nonce);
@@ -437,6 +437,76 @@ bool ethash_verify(const epoch_context* context, const hash256* header_hash,
 
     const hash256 expected_mix_hash = hash_kernel(*context, seed, calculate_dataset_item_1024);
     return is_equal(expected_mix_hash, *mix_hash);
+}
+
+static const uint32_t ravencoin_kawpow[15] = {
+        0x00000072, //R
+        0x00000041, //A
+        0x00000056, //V
+        0x00000045, //E
+        0x0000004E, //N
+        0x00000043, //C
+        0x0000004F, //O
+        0x00000049, //I
+        0x0000004E, //N
+        0x0000004B, //K
+        0x00000041, //A
+        0x00000057, //W
+        0x00000050, //P
+        0x0000004F, //O
+        0x00000057, //W
+};
+
+hash256 light_verify_2(const hash256* header_hash,
+                       const hash256* mix_hash, uint64_t nonce) noexcept
+{
+    uint32_t state2[8];
+
+    {
+        // Absorb phase for initial round of keccak
+        // 1st fill with header data (8 words)
+        uint32_t state[25] = {0x0};     // Keccak's state
+        for (int i = 0; i < 8; i++)
+            state[i] = header_hash->word32s[i];
+
+        // 2nd fill with nonce (2 words)
+        state[8] = (uint32_t)nonce;
+        state[9] = (uint32_t)(nonce >> 32);
+
+        // 3rd apply ravencoin input constraints
+        for (int i = 10; i < 25; i++)
+            state[i] = ravencoin_kawpow[i-10];
+
+        kawpow_keccakf800(state);
+
+        for (int i = 0; i < 8; i++)
+            state2[i] = state[i];
+    }
+
+    uint32_t state[25] = {0x0};     // Keccak's state
+
+    // Absorb phase for last round of keccak (256 bits)
+    // 1st initial 8 words of state are kept as carry-over from initial keccak
+    for (int i = 0; i < 8; i++)
+        state[i] = state2[i];
+
+
+    // 2nd subsequent 8 words are carried from digest/mix
+    for (int i = 8; i < 16; i++)
+        state[i] = mix_hash->word32s[i-8];
+
+    // 3rd apply ravencoin input constraints
+    for (int i = 16; i < 25; i++)
+        state[i] = ravencoin_kawpow[i - 16];
+
+    // Run keccak loop
+    kawpow_keccakf800(state);
+
+    hash256 output;
+    for (int i = 0; i < 8; ++i)
+        output.word32s[i] = le::uint32(state[i]);
+
+    return output;
 }
 
 }  // extern "C"
