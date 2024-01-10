@@ -11,12 +11,13 @@
 #     make install
 
 from cffi import FFI
-import sys
+import sys, re
 
 ffibuilder = FFI()
 
 stdlib = []
-if sys.platform in ('linux', 'freebsd', 'openbsd'):
+os_match = re.match(r'linux|.*bsd.*', sys.platform, re.IGNORECASE)
+if os_match:
     stdlib.append('stdc++')
 
 ffibuilder.set_source(
